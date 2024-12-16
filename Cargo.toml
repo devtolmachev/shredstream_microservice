@@ -1,0 +1,10 @@
+[package]
+name = "shredstream_microservice"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+arc-swap = "1.7.1"
+crossbeam-channel = "0.5.14"
+solana-net-utils = "2.1.6"
+solana-streamer = "2.1.6"
