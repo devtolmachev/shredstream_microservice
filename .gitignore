@@ -4449,3 +4449,4 @@ udp_packets.bin
 /.idea/modules.xml
 /.idea/shredstream_microservice.iml
 /Cargo.lock
+/target/

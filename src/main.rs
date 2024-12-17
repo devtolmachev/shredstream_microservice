@@ -77,7 +77,7 @@ fn save_packet_to_file(maybe_packet: Result<PacketBatch, RecvError>) {
         .append(true)
         .open("udp_packets.bin").unwrap();
 
-    for packet in packets {
+    for packet in packets.clone() {
         let packet_len = packet.len() as u32;
 
         file.write_all(&packet_len.to_le_bytes()).unwrap();
@@ -85,15 +85,19 @@ fn save_packet_to_file(maybe_packet: Result<PacketBatch, RecvError>) {
         file.flush().unwrap();
         println!("len: {packet_len}");
     }
+    file.write_all(b"Batch end").unwrap();
+    println!("Batch len: {:?}", packets.len());
 }
 
 
-fn read_packets_from_file() {
+fn read_packets_from_file() -> Vec<Vec<Vec<u8>>> {
     let mut file = File::open("udp_packets.bin").unwrap();
 
     // Буфер для чтения длины пакета (4 байта для u32)
     let mut length_buf = [0u8; 4];
 
+    let mut batch = vec![];
+    let mut results = vec![];
     loop {
         // Читаем длину пакета
         if file.read_exact(&mut length_buf).is_err() {
@@ -110,24 +114,36 @@ fn read_packets_from_file() {
         }
 
         // Обрабатываем пакет (например, выводим его содержимое)
-        println!("Read packet of length {}: {:?}", packet_len, packet_buf);
-        println!("{:?}", String::from_utf8(packet_buf));
+        println!("{:?}", String::from_utf8(packet_buf.clone()).unwrap());
+        batch.push(packet_buf);
+
+        let mut batch_symbol = vec![0; 9];
+        if file.read_exact(&mut batch_symbol).is_ok() {
+            if let Ok(str) = String::from_utf8(batch_symbol.to_vec()) {
+                if str.to_string().contains("Batch end") {
+                    results.push(batch.clone());
+                    batch.clear();
+                }
+            }
+        }
+
     }
+    results
 }
 
 
 fn main() -> std::io::Result<()> {
-    // let handles = start_forwarder_threads(
-    //     IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
-    //     20000,
-    //     Some(3),
-    //     Arc::new(AtomicBool::default())
-    // );
-    //
-    // for h in handles {
-    //     h.join().unwrap();
-    // }
-    read_packets_from_file();
+    let handles = start_forwarder_threads(
+        IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)),
+        20000,
+        Some(3),
+        Arc::new(AtomicBool::default())
+    );
+
+    for h in handles {
+        h.join().unwrap();
+    }
+    println!("{:?}", read_packets_from_file());
 
     Ok(())
 }
